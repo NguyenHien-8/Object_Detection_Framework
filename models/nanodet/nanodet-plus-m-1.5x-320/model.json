@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "id": "nanodet-plus-m-1.5x-320",
+  "display_name": "NanoDet-Plus-m-1.5x-320",
+  "family": "nanodet",
+  "source_framework": "pytorch",
+  "variant": "m-1.5x-320",
+  "class_count": 80,
+  "labels": "../../labels/coco80.txt",
+  "supported_backends": ["ncnn", "onnxruntime", "openvino"],
+  "default_backend": "ncnn",
+  "deployment_validated": false,
+  "input": {"name": "data", "width": 320, "height": 320, "color_order": "BGR", "layout": "CHW", "dtype": "FP32"},
+  "preprocess": {"resize": "direct", "pad_value": 0, "scale": 1.0, "mean": [103.53, 116.28, 123.675], "std": [57.375, 57.12, 58.395]},
+  "postprocess": {"mode": "nanodet_plus_dfl", "requires_nms": true, "confidence_threshold": 0.35, "iou_threshold": 0.6, "reg_max": 7, "strides": [8, 16, 32, 64]},
+  "artifacts": {
+    "ncnn": {"inputs": ["data"], "outputs": ["output"], "files": {"param": "model.param", "bin": "model.bin"}},
+    "onnxruntime": {"inputs": ["data"], "outputs": ["output"], "files": {"model": "model.onnx"}},
+    "openvino": {"inputs": ["data"], "outputs": ["output"], "files": {"model": "model.xml", "weights": "model.bin"}}
+  }
+}
+

@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "id": "yolo26s",
+  "display_name": "YOLO26s",
+  "family": "yolo26",
+  "source_framework": "pytorch",
+  "variant": "s",
+  "class_count": 80,
+  "labels": "../../labels/coco80.txt",
+  "supported_backends": ["onnxruntime", "openvino", "tensorrt"],
+  "default_backend": "onnxruntime",
+  "deployment_validated": false,
+  "input": {"name": "images", "width": 640, "height": 640, "color_order": "RGB", "layout": "CHW", "dtype": "FP32"},
+  "preprocess": {"resize": "letterbox", "pad_value": 114, "scale": 0.003921568627, "mean": [0, 0, 0], "std": [1, 1, 1]},
+  "postprocess": {"mode": "yolo26_end2end", "requires_nms": false, "confidence_threshold": 0.25, "iou_threshold": 0.45, "reg_max": 1, "strides": [8, 16, 32]},
+  "artifacts": {
+    "onnxruntime": {"inputs": ["images"], "outputs": ["output0"], "files": {"model": "model.onnx"}},
+    "openvino": {"inputs": ["images"], "outputs": ["output0"], "files": {"model": "model.xml", "weights": "model.bin"}},
+    "tensorrt": {"inputs": ["images"], "outputs": ["output0"], "files": {"engine": "model.engine"}}
+  }
+}
+
