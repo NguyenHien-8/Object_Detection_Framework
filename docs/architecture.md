@@ -11,7 +11,7 @@ CUDA, ncnn, Paddle, OpenVINO, TensorRT, or ONNX Runtime headers.
 libraries execute tensors but do not decode boxes.
 
 ```text
-CLI / future Qt client
+CLI / Qt desktop client
         |
         v
 DetectorFactory ---- ModelRegistry
@@ -61,4 +61,3 @@ without introducing a dependency from `odf_core` back to the application.
 
 Every contract rejects mismatched rank, batch, channels, point counts, NaN/Inf, invalid classes,
 and impossible confidence values.
-

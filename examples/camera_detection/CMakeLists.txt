@@ -1,0 +1,5 @@
+find_package(OpenCV 4 REQUIRED COMPONENTS highgui)
+add_executable(odf_camera_detection main.cpp)
+target_link_libraries(odf_camera_detection PRIVATE odf_app_support ${OpenCV_LIBS})
+odf_enable_warnings(odf_camera_detection)
+odf_stage_runtime_dependencies(odf_camera_detection)

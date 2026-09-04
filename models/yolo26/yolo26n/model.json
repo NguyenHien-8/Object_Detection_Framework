@@ -9,7 +9,7 @@
   "labels": "../../labels/coco80.txt",
   "supported_backends": ["onnxruntime", "openvino", "tensorrt"],
   "default_backend": "onnxruntime",
-  "deployment_validated": false,
+  "deployment_validated": true,
   "input": {"name": "images", "width": 640, "height": 640, "color_order": "RGB", "layout": "CHW", "dtype": "FP32"},
   "preprocess": {"resize": "letterbox", "pad_value": 114, "scale": 0.003921568627, "mean": [0, 0, 0], "std": [1, 1, 1]},
   "postprocess": {"mode": "yolo26_end2end", "requires_nms": false, "confidence_threshold": 0.25, "iou_threshold": 0.45, "reg_max": 1, "strides": [8, 16, 32]},
@@ -19,4 +19,3 @@
     "tensorrt": {"inputs": ["images"], "outputs": ["output0"], "files": {"engine": "model.engine"}}
   }
 }
-

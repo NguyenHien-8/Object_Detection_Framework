@@ -1,0 +1,4 @@
+add_executable(odf_image_detection main.cpp)
+target_link_libraries(odf_image_detection PRIVATE odf_app_support)
+odf_enable_warnings(odf_image_detection)
+odf_stage_runtime_dependencies(odf_image_detection)

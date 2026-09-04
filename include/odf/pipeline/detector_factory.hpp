@@ -8,8 +8,13 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <vector>
 
 namespace odf::pipeline {
+
+struct DetectorCreationOptions {
+    bool allowUnvalidatedModel{false};
+};
 
 /** Extensible composition registry below the GUI/application layer. */
 class DetectorFactory {
@@ -20,7 +25,9 @@ public:
     Status registerAdapter(model::ModelFamily family, AdapterCreator creator);
     Status registerBackend(std::string name, BackendCreator creator);
     Result<std::unique_ptr<IDetector>> create(const model::ModelSpec& spec,
-                                              const std::string& backendName) const;
+                                              const std::string& backendName,
+                                              DetectorCreationOptions options = {}) const;
+    [[nodiscard]] std::vector<backend::BackendInfo> backendInfos() const;
 
 private:
     std::map<model::ModelFamily, AdapterCreator> adapters_;
@@ -28,4 +35,3 @@ private:
 };
 
 }  // namespace odf::pipeline
-

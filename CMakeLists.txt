@@ -13,6 +13,9 @@ option(ODF_ENABLE_TENSORRT "Build the TensorRT backend" OFF)
 option(ODF_ENABLE_PADDLE "Build the Paddle Inference backend" OFF)
 option(ODF_ENABLE_CUDA "Enable CUDA execution where supported" OFF)
 option(ODF_ENABLE_VULKAN "Enable Vulkan execution where supported" OFF)
+option(ODF_ENABLE_REAL_MODEL_TESTS "Run tests that require a local real model" OFF)
+set(ODF_TEST_MODEL_ROOT "" CACHE PATH "Model root for optional real-model tests")
+set(ODF_TEST_IMAGE "" CACHE FILEPATH "Input image for optional real-model tests")
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -45,14 +48,21 @@ foreach(planned_backend IN ITEMS NCNN OPENVINO TENSORRT PADDLE)
     endif()
 endforeach()
 
-if(ODF_BUILD_DESKTOP)
-    message(FATAL_ERROR
-        "ODF_BUILD_DESKTOP=ON, but the desktop client is not part of the verified 0.1 build. "
-        "Disable it; see docs/backends.md and docs/build.md.")
+if(ODF_BUILD_DESKTOP OR (ODF_BUILD_EXAMPLES AND ODF_ENABLE_ONNXRUNTIME))
+    add_subdirectory(applications)
 endif()
 
 if(ODF_BUILD_EXAMPLES)
     add_subdirectory(examples)
+endif()
+
+if(ODF_BUILD_DESKTOP)
+    if(NOT TARGET odf_backend_onnxruntime)
+        message(FATAL_ERROR
+            "ODF_BUILD_DESKTOP=ON requires the MVP runtime. Set ODF_ENABLE_ONNXRUNTIME=ON "
+            "and ONNXRUNTIME_ROOT to the official C++ SDK root.")
+    endif()
+    add_subdirectory(desktop/Qt)
 endif()
 
 if(ODF_BUILD_TESTS)

@@ -12,7 +12,8 @@ namespace odf::pipeline {
 class DetectorPipeline final : public IDetector {
 public:
     DetectorPipeline(std::unique_ptr<model::IModelAdapter> adapter,
-                     std::unique_ptr<backend::IInferenceBackend> backend);
+                     std::unique_ptr<backend::IInferenceBackend> backend,
+                     bool allowUnvalidatedModel = false);
     ~DetectorPipeline() override;
 
     Status load(const model::ModelSpec& model,
@@ -30,6 +31,7 @@ private:
     mutable std::mutex mutex_;
     std::unique_ptr<model::ModelSpec> model_;
     std::uint64_t generation_{0};
+    bool allowUnvalidatedModel_{false};
 };
 
 /** Returns false for results produced before the current model generation. */

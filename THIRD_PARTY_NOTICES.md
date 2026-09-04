@@ -16,9 +16,12 @@ Optional integrations refer to these independently licensed projects:
 - Qt: <https://www.qt.io/licensing>
 - OpenCV: <https://opencv.org/license/>
 
+The locally validated `model.onnx` was exported with Ultralytics 8.4.138 and declares the
+Ultralytics AGPL-3.0 license in its ONNX metadata. The model and its `.pt` source are ignored by
+Git and are not relicensed by this repository.
+
 Users must review the license matching the exact version they install. Model/checkpoint licenses
 can differ from runtime and source licenses. In particular, exporting or deploying a model does
 not transfer the model author's license to ODF and does not make the artifact GPL-3.0 by default.
 
 The existing repository `LICENSE` remains unchanged.
-

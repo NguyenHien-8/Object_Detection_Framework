@@ -27,8 +27,11 @@ Status validateOptions(const detection::InferenceOptions& options) {
 }  // namespace
 
 DetectorPipeline::DetectorPipeline(std::unique_ptr<model::IModelAdapter> adapter,
-                                   std::unique_ptr<backend::IInferenceBackend> backend)
-    : adapter_(std::move(adapter)), backend_(std::move(backend)) {
+                                   std::unique_ptr<backend::IInferenceBackend> backend,
+                                   bool allowUnvalidatedModel)
+    : adapter_(std::move(adapter)),
+      backend_(std::move(backend)),
+      allowUnvalidatedModel_(allowUnvalidatedModel) {
     if (!adapter_ || !backend_) {
         throw std::invalid_argument("DetectorPipeline requires an adapter and backend");
     }
@@ -43,11 +46,15 @@ Status DetectorPipeline::load(const model::ModelSpec& spec,
     if (!modelStatus.ok()) {
         return modelStatus;
     }
-    if (!spec.deploymentValidated) {
+    if (!spec.deploymentValidated && !allowUnvalidatedModel_) {
         return Status::error(
             ErrorCode::InvalidModelConfig,
             "model='" + spec.id +
                 "' is a registry template; verify it against an exported artifact before loading");
+    }
+    if (!spec.deploymentValidated) {
+        logging::log(logging::Level::Warning,
+                     "developer override: loading unvalidated model='" + spec.id + "'");
     }
     if (adapter_->family() != spec.family) {
         return Status::error(ErrorCode::InvalidModelConfig,

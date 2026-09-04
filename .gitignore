@@ -3,6 +3,9 @@
 /.vs/
 /.vscode/
 /CMakeUserPresets.json
+/.venv-export/
+/.uv-cache/
+/validation-output/
 CMakeCache.txt
 CMakeFiles/
 cmake_install.cmake
@@ -27,4 +30,4 @@ Testing/
 benchmarks/results/
 models/downloads/
 models/cache/
-
+.venv-yolo26/

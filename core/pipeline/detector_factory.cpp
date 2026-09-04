@@ -3,6 +3,7 @@
 #include "odf/pipeline/detector_pipeline.hpp"
 
 #include <algorithm>
+#include <exception>
 #include <utility>
 
 namespace odf::pipeline {
@@ -35,7 +36,8 @@ Status DetectorFactory::registerBackend(std::string name, BackendCreator creator
 
 Result<std::unique_ptr<IDetector>> DetectorFactory::create(
     const model::ModelSpec& spec,
-    const std::string& backendName) const {
+    const std::string& backendName,
+    DetectorCreationOptions options) const {
     const auto supported = std::find(spec.supportedBackends.begin(),
                                      spec.supportedBackends.end(), backendName);
     if (supported == spec.supportedBackends.end()) {
@@ -55,8 +57,34 @@ Result<std::unique_ptr<IDetector>> DetectorFactory::create(
                              "backend is not registered in this build: " + backendName);
     }
     std::unique_ptr<IDetector> detector = std::make_unique<DetectorPipeline>(
-        adapter->second(), backend->second());
+        adapter->second(), backend->second(), options.allowUnvalidatedModel);
     return std::move(detector);
+}
+
+std::vector<backend::BackendInfo> DetectorFactory::backendInfos() const {
+    std::vector<backend::BackendInfo> result;
+    result.reserve(backends_.size());
+    for (const auto& entry : backends_) {
+        try {
+            auto instance = entry.second();
+            if (instance) {
+                result.push_back(instance->info());
+            }
+        } catch (const std::exception& exception) {
+            backend::BackendInfo info;
+            info.name = entry.first;
+            info.available = false;
+            info.unavailableReason = std::string("capability query failed: ") + exception.what();
+            result.push_back(std::move(info));
+        } catch (...) {
+            backend::BackendInfo info;
+            info.name = entry.first;
+            info.available = false;
+            info.unavailableReason = "capability query failed with an unknown exception";
+            result.push_back(std::move(info));
+        }
+    }
+    return result;
 }
 
 }  // namespace odf::pipeline

@@ -3,8 +3,10 @@
 #include <onnxruntime_cxx_api.h>
 
 #include <algorithm>
+#include <cstdint>
 #include <filesystem>
 #include <memory>
+#include <sstream>
 #include <string>
 #include <utility>
 
@@ -16,6 +18,7 @@ public:
     std::unique_ptr<Ort::Session> session;
     std::vector<std::string> inputNames;
     std::vector<std::string> outputNames;
+    std::vector<std::vector<std::int64_t>> inputShapes;
 };
 
 namespace {
@@ -31,6 +34,26 @@ Status validateNames(const std::vector<std::string>& expected,
         }
     }
     return Status::success();
+}
+
+bool shapeMatches(const std::vector<std::int64_t>& expected,
+                  const std::vector<std::int64_t>& actual) {
+    if (expected.size() != actual.size()) return false;
+    for (std::size_t index = 0; index < expected.size(); ++index) {
+        if (expected[index] > 0 && expected[index] != actual[index]) return false;
+    }
+    return true;
+}
+
+std::string formatShape(const std::vector<std::int64_t>& shape) {
+    std::ostringstream stream;
+    stream << '[';
+    for (std::size_t index = 0; index < shape.size(); ++index) {
+        if (index != 0) stream << ',';
+        stream << shape[index];
+    }
+    stream << ']';
+    return stream.str();
 }
 
 }  // namespace
@@ -81,6 +104,7 @@ Status OnnxRuntimeBackend::load(const model::ModelArtifact& artifact,
         Ort::AllocatorWithDefaultOptions allocator;
         impl_->inputNames.clear();
         impl_->outputNames.clear();
+        impl_->inputShapes.clear();
         for (std::size_t index = 0; index < impl_->session->GetInputCount(); ++index) {
             const auto name = impl_->session->GetInputNameAllocated(index, allocator);
             impl_->inputNames.emplace_back(name.get());
@@ -90,6 +114,7 @@ Status OnnxRuntimeBackend::load(const model::ModelArtifact& artifact,
                 return Status::error(ErrorCode::ModelLoadFailure,
                                      "ONNX input tensor must have Float32 element type");
             }
+            impl_->inputShapes.push_back(type.GetShape());
         }
         for (std::size_t index = 0; index < impl_->session->GetOutputCount(); ++index) {
             const auto name = impl_->session->GetOutputNameAllocated(index, allocator);
@@ -140,6 +165,13 @@ Result<std::vector<Tensor>> OnnxRuntimeBackend::infer(const std::vector<Tensor>&
         for (std::size_t index = 0; index < inputs.size(); ++index) {
             const auto status = inputs[index].validate();
             if (!status.ok()) return status;
+            if (!shapeMatches(impl_->inputShapes[index], inputs[index].shape)) {
+                return Status::error(
+                    ErrorCode::TensorShapeMismatch,
+                    "ONNX input shape mismatch for input='" + impl_->inputNames[index] +
+                        "': expected " + formatShape(impl_->inputShapes[index]) +
+                        ", actual " + formatShape(inputs[index].shape));
+            }
             values.push_back(Ort::Value::CreateTensor<float>(
                 memory, const_cast<float*>(inputs[index].data.data()), inputs[index].data.size(),
                 inputs[index].shape.data(), inputs[index].shape.size()));
@@ -184,7 +216,7 @@ void OnnxRuntimeBackend::unload() noexcept {
     impl_->session.reset();
     impl_->inputNames.clear();
     impl_->outputNames.clear();
+    impl_->inputShapes.clear();
 }
 
 }  // namespace odf::backends
-

@@ -238,6 +238,16 @@ void testFactoryPipelineAndStaleResults() {
     EXPECT_TRUE(detected.ok() && detected.value().detections.size() == 1U);
     EXPECT_TRUE(odf::pipeline::isCurrentResult(detected.value(), 7, 1, "fixture"));
     EXPECT_TRUE(!odf::pipeline::isCurrentResult(detected.value(), 8, 1, "fixture"));
+
+    spec.deploymentValidated = false;
+    auto rejected = factory.create(spec, "mock");
+    EXPECT_TRUE(rejected.ok() && !rejected.value()->load(spec, {}).ok());
+    auto overridden = factory.create(
+        spec, "mock", odf::pipeline::DetectorCreationOptions{true});
+    EXPECT_TRUE(overridden.ok() && overridden.value()->load(spec, {}).ok());
+    const auto capabilities = factory.backendInfos();
+    EXPECT_TRUE(capabilities.size() == 1U && capabilities[0].name == "mock" &&
+                capabilities[0].available);
 }
 
 void testStatistics() {

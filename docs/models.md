@@ -10,9 +10,10 @@ Exactly 16 checked-in profiles are provided:
   `picodet-m-416`, `picodet-l-320`, `picodet-l-416`, `picodet-l-640`
 - YOLO26: `yolo26n`, `yolo26s`, `yolo26m`, `yolo26l`, `yolo26x`
 
-All are metadata templates. They intentionally set `deployment_validated` to `false`, and the
-pipeline refuses to load them. The known input resolutions and baseline family configuration are
-not a substitute for inspecting a concrete exported artifact.
+YOLO26n is locally validated for the exact artifact hash in
+`models/yolo26/yolo26n/VALIDATION.md`. The remaining 15 profiles are metadata templates with
+`deployment_validated=false`; the pipeline refuses to load them by default. The known input
+resolutions and baseline family configuration are not a substitute for inspecting an artifact.
 
 ## Supplying a model
 
@@ -55,17 +56,17 @@ contract is graph-postprocessed `bbox` plus optional `bbox_num`; other layouts r
 
 ### YOLO26
 
-For the default ONNX end-to-end head, the upstream export command is conceptually:
+For the default ONNX end-to-end head, use the checked-in helper:
 
 ```text
-yolo export model=yolo26n.pt format=onnx imgsz=640 end2end=True
+python scripts/export_yolo26n_onnx.py
+python scripts/inspect_onnx.py models/yolo26/yolo26n/model.onnx
 ```
 
-Put the result at `models/yolo26/yolo26n/model.onnx` and verify its actual metadata. End-to-end
-must yield `[1, max_det, 6]`; one-to-many export uses `end2end=False`, yields
+The helper puts the result at `models/yolo26/yolo26n/model.onnx`. End-to-end must yield
+`[1, max_det, 6]`; one-to-many export uses `end2end=False`, yields
 `[1, 4+class_count, predictions]`, and requires changing metadata to
 `yolo26_one_to_many` with `requires_nms=true`. Never infer NMS behavior from the filename.
 
 Model weights and generated artifacts retain their own licenses; supplying an artifact is the
 user's responsibility.
-
