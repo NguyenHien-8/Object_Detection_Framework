@@ -64,5 +64,5 @@ the [English documentation index](docs/En/README.md).
 
 ## License boundary
 
-ODF source is governed by the repository [`LICENSE`](LICENSE). Runtime SDKs and model artifacts
+ODF source is governed by the repository [`LICENSE`](../LICENSE). Runtime SDKs and model artifacts
 retain their own licenses; see [third-party notices](THIRD_PARTY_NOTICES_En.md).
