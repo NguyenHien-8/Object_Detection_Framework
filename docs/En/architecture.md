@@ -106,17 +106,28 @@ GUI thread
 InferenceWorker std::thread <- capacity-one pending frame
        ^
        |
-CameraWorker QObject on QThread <- OpenCV VideoCapture + QTimer
+CameraWorker QObject on QThread <- Media Foundation identity + OpenCV CAP_MSMF
 ```
 
-The camera and inference work never execute on the GUI thread. If capture outruns inference, a
-new frame replaces the single pending frame and increments `droppedFrames`; this bounds latency
-and memory instead of building an old-frame queue. A model-load request increments a generation
-number, clears a pending frame, and causes results from an earlier generation to be discarded.
-Each emitted packet contains its exact owned frame, detections, labels, generation, and drop
-count, preventing boxes from being painted over a different frame.
+Windows camera discovery uses `MFEnumDeviceSources`; the visible value is the Media Foundation
+FriendlyName, the persistent value is its symbolic link, and only the matching internal
+`CAP_MSMF` enumeration index reaches OpenCV. No numeric placeholder devices are created.
 
-Changing class selection filters the cached result for display without another inference.
+The acknowledged lifecycle is `Idle -> Opening -> Running -> Stopping -> Idle`, with failures
+entering `Error`. `Running` is acknowledged only after the first valid frame. `Idle` is
+acknowledged only after scheduling stops and `VideoCapture::release()` completes. Opening and
+stopping watchdogs are five and three seconds respectively; they never force-kill native code.
+
+The camera and inference work never execute on the GUI thread. Capture uses a 15 ms single-shot
+timer that is rescheduled after each completed read, leaving the camera event loop able to process
+queued lifecycle requests. If capture outruns inference, a new frame replaces the single pending
+frame and increments `droppedFrames`. Camera session IDs and source generations reject old
+frames and in-flight detections after stop, restart, source switch, or Refresh.
+
+Refresh invalidates the source generation and re-enumerates devices without unloading the model.
+For a running camera it waits for the release acknowledgement, preserves the symbolic-link ID,
+and starts a new session only if that same device remains present. In image mode it resubmits the
+retained in-memory image once. Changing class selection filters the cached result without another inference.
 Changing confidence, IoU, or maximum detections resubmits the current still image; live camera
 mode naturally applies the new options to the next frame. Shutdown stops capture, joins the Qt
 camera thread, stops and joins inference, unloads the detector, and only then destroys the UI.

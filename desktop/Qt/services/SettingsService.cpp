@@ -12,7 +12,10 @@ DesktopSettings SettingsService::load() const {
     result.confidence = store.value(QStringLiteral("detection/confidence"), result.confidence).toDouble();
     result.iou = store.value(QStringLiteral("detection/iou"), result.iou).toDouble();
     result.maxDetections = store.value(QStringLiteral("detection/max"), result.maxDetections).toInt();
-    result.cameraIndex = store.value(QStringLiteral("source/camera"), result.cameraIndex).toInt();
+    result.cameraDeviceId = store.value(QStringLiteral("source/cameraDeviceId")).toString();
+    if (result.cameraDeviceId.isEmpty() && store.contains(QStringLiteral("source/camera"))) {
+        result.legacyCameraIndex = store.value(QStringLiteral("source/camera")).toInt();
+    }
     result.lastImageDirectory = store.value(QStringLiteral("source/imageDirectory")).toString();
     result.modelRootOverride = store.value(QStringLiteral("model/rootOverride")).toString();
     result.classSelectionStored = store.contains(QStringLiteral("detection/selectedClasses"));
@@ -30,7 +33,8 @@ void SettingsService::save(const DesktopSettings& settings) const {
     store.setValue(QStringLiteral("detection/confidence"), settings.confidence);
     store.setValue(QStringLiteral("detection/iou"), settings.iou);
     store.setValue(QStringLiteral("detection/max"), settings.maxDetections);
-    store.setValue(QStringLiteral("source/camera"), settings.cameraIndex);
+    store.setValue(QStringLiteral("source/cameraDeviceId"), settings.cameraDeviceId);
+    store.remove(QStringLiteral("source/camera"));
     store.setValue(QStringLiteral("source/imageDirectory"), settings.lastImageDirectory);
     store.setValue(QStringLiteral("model/rootOverride"), settings.modelRootOverride);
     QVariantList selectedClasses;

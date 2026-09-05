@@ -82,6 +82,21 @@ These tests do not require a webcam. They also do not execute the real YOLO26n g
 configuration was created with `ODF_ENABLE_REAL_MODEL_TESTS=ON`, a valid
 `ODF_TEST_MODEL_ROOT`, and a real `ODF_TEST_IMAGE`. That opt-in adds `odf_real_yolo26n`.
 
+`odf_camera_hardware_test` is built with the Desktop tests but deliberately not registered in
+CTest. Run it manually only on a machine with an available camera. It enumerates real Media
+Foundation devices and performs 20 `open -> first frame -> release acknowledgement` cycles while
+checking stable identity across a mid-run refresh:
+
+```powershell
+.\build-desktop\tests\Release\odf_camera_hardware_test.exe
+```
+
+Pass an optional zero-based position from the utility's printed list to test another device.
+
+Pass an optional zero-based position from the utility's printed list to test another device.
+
+Pass an optional zero-based position from the utility's printed list to test another device.
+
 ## Deliberately unsupported switches
 
 `ODF_ENABLE_NCNN`, `ODF_ENABLE_OPENVINO`, `ODF_ENABLE_TENSORRT`, and `ODF_ENABLE_PADDLE`

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "services/CameraDeviceService.hpp"
 #include "workers/InferenceWorker.hpp"
 
 #include <QObject>
@@ -22,23 +23,30 @@ public:
     ~CameraWorker() override;
 
 public slots:
-    void start(int cameraIndex);
-    void stop();
+    void start(odf::desktop::CameraOpenRequest request);
+    void stop(quint64 sessionId);
 
 signals:
-    void frameCaptured(odf::desktop::ImageFramePtr frame);
-    void stateChanged(QString state, QString detail);
-    void failed(QString operation, QString detail);
+    void opening(quint64 sessionId, QString deviceId);
+    void started(quint64 sessionId, QString deviceId);
+    void stopped(quint64 sessionId);
+    void frameCaptured(quint64 sessionId, odf::desktop::ImageFramePtr frame);
+    void failed(quint64 sessionId, QString operation, QString detail);
 
 private slots:
     void captureNext();
 
 private:
+    void releaseActive() noexcept;
+    void failActive(const QString& detail);
+
     std::unique_ptr<cv::VideoCapture> capture_;
     QTimer* timer_{nullptr};
     std::uint64_t frameId_{0};
-    int cameraIndex_{-1};
+    quint64 activeSession_{0};
+    QString activeDeviceId_;
+    QString activeDisplayName_;
+    bool firstFrameSeen_{false};
 };
 
 }  // namespace odf::desktop
-

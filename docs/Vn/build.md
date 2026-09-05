@@ -81,6 +81,17 @@ Các test này không yêu cầu webcam và không chạy graph YOLO26n thật, 
 `ODF_ENABLE_REAL_MODEL_TESTS=ON`, `ODF_TEST_MODEL_ROOT` hợp lệ và `ODF_TEST_IMAGE` là ảnh thật.
 Cấu hình tùy chọn đó thêm test `odf_real_yolo26n`.
 
+`odf_camera_hardware_test` được build cùng Desktop test nhưng chủ động không đăng ký vào CTest.
+Chỉ chạy thủ công trên máy có camera khả dụng. Chương trình quét thiết bị Media Foundation thật,
+lặp 20 chu kỳ `open -> frame đầu tiên -> acknowledgement release` và kiểm tra stable identity qua
+một lần refresh giữa chừng:
+
+```powershell
+.\build-desktop\tests\Release\odf_camera_hardware_test.exe
+```
+
+Truyền thêm vị trí bắt đầu từ 0 trong danh sách mà utility in ra để kiểm tra thiết bị khác.
+
 ## Các tùy chọn chưa hỗ trợ
 
 `ODF_ENABLE_NCNN`, `ODF_ENABLE_OPENVINO`, `ODF_ENABLE_TENSORRT` và `ODF_ENABLE_PADDLE` hiện dừng

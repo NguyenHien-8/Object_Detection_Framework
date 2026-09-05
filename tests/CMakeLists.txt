@@ -19,10 +19,21 @@ if(TARGET odf_desktop)
         desktop_test_main.cpp
         "${PROJECT_SOURCE_DIR}/desktop/Qt/bridge/QtImageBridge.cpp"
         "${PROJECT_SOURCE_DIR}/desktop/Qt/bridge/QtImageBridge.hpp"
+        "${PROJECT_SOURCE_DIR}/desktop/Qt/services/CameraDeviceService.cpp"
+        "${PROJECT_SOURCE_DIR}/desktop/Qt/services/CameraDeviceService.hpp"
         "${PROJECT_SOURCE_DIR}/desktop/Qt/widgets/ClassFilterPanel.cpp"
-        "${PROJECT_SOURCE_DIR}/desktop/Qt/widgets/ClassFilterPanel.hpp")
+        "${PROJECT_SOURCE_DIR}/desktop/Qt/widgets/ClassFilterPanel.hpp"
+        "${PROJECT_SOURCE_DIR}/desktop/Qt/widgets/DetectionViewport.cpp"
+        "${PROJECT_SOURCE_DIR}/desktop/Qt/widgets/DetectionViewport.hpp"
+        "${PROJECT_SOURCE_DIR}/desktop/Qt/widgets/MainWindow.cpp"
+        "${PROJECT_SOURCE_DIR}/desktop/Qt/widgets/MainWindow.hpp"
+        "${PROJECT_SOURCE_DIR}/desktop/Qt/workers/InferenceWorker.cpp"
+        "${PROJECT_SOURCE_DIR}/desktop/Qt/workers/InferenceWorker.hpp")
     target_include_directories(odf_desktop_tests PRIVATE "${PROJECT_SOURCE_DIR}/desktop/Qt")
     target_link_libraries(odf_desktop_tests PRIVATE odf_app_support Qt6::Widgets)
+    if(WIN32)
+        target_link_libraries(odf_desktop_tests PRIVATE ole32 mf mfplat mfuuid)
+    endif()
     set_target_properties(odf_desktop_tests PROPERTIES AUTOMOC ON)
     odf_enable_warnings(odf_desktop_tests)
     odf_stage_runtime_dependencies(odf_desktop_tests)
@@ -54,6 +65,27 @@ if(TARGET odf_desktop)
     set_tests_properties(odf_desktop_missing_model_smoke PROPERTIES
         ENVIRONMENT "QT_QPA_PLATFORM=offscreen;ODF_DESKTOP_SMOKE_EXIT_MS=1200"
         TIMEOUT 15)
+
+    add_executable(odf_camera_hardware_test
+        camera_hardware_test.cpp
+        "${PROJECT_SOURCE_DIR}/desktop/Qt/services/CameraDeviceService.cpp"
+        "${PROJECT_SOURCE_DIR}/desktop/Qt/services/CameraDeviceService.hpp"
+        "${PROJECT_SOURCE_DIR}/desktop/Qt/workers/CameraWorker.cpp"
+        "${PROJECT_SOURCE_DIR}/desktop/Qt/workers/CameraWorker.hpp")
+    target_include_directories(odf_camera_hardware_test PRIVATE
+        "${PROJECT_SOURCE_DIR}/desktop/Qt")
+    target_link_libraries(odf_camera_hardware_test PRIVATE odf_app_support Qt6::Core)
+    set_target_properties(odf_camera_hardware_test PROPERTIES AUTOMOC ON)
+    odf_enable_warnings(odf_camera_hardware_test)
+    odf_stage_runtime_dependencies(odf_camera_hardware_test)
+    if(WIN32)
+        target_link_libraries(odf_camera_hardware_test PRIVATE ole32 mf mfplat mfuuid)
+        add_custom_command(TARGET odf_camera_hardware_test POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                "$<TARGET_FILE:Qt6::Core>"
+                "$<TARGET_FILE_DIR:odf_camera_hardware_test>"
+            COMMENT "Staging Qt Core for the standalone camera hardware test")
+    endif()
 endif()
 
 if(ODF_ENABLE_REAL_MODEL_TESTS)

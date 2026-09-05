@@ -47,12 +47,17 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     precisionCombo_->addItem(QStringLiteral("FP32"));
     precisionCombo_->setEnabled(false);
     loadButton_ = new QPushButton(QStringLiteral("Load model"), central);
+    loadButton_->setObjectName(QStringLiteral("loadModelButton"));
+    refreshButton_ = new QPushButton(QStringLiteral("Refresh"), central);
+    refreshButton_->setObjectName(QStringLiteral("refreshButton"));
+    refreshButton_->setToolTip(
+        QStringLiteral("Refresh source state and camera devices without reloading the model"));
     openButton_ = new QPushButton(QStringLiteral("Open image…"), central);
+    openButton_->setObjectName(QStringLiteral("openImageButton"));
     cameraCombo_ = new QComboBox(central);
-    for (int index = 0; index < 8; ++index) {
-        cameraCombo_->addItem(QStringLiteral("Camera %1").arg(index), index);
-    }
+    cameraCombo_->setObjectName(QStringLiteral("cameraDeviceCombo"));
     cameraButton_ = new QPushButton(QStringLiteral("Start camera"), central);
+    cameraButton_->setObjectName(QStringLiteral("cameraButton"));
     toolbar->addWidget(new QLabel(QStringLiteral("Framework"), central));
     toolbar->addWidget(frameworkCombo_);
     toolbar->addWidget(new QLabel(QStringLiteral("Model"), central));
@@ -62,7 +67,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     toolbar->addWidget(deviceCombo_);
     toolbar->addWidget(precisionCombo_);
     toolbar->addWidget(loadButton_);
-    toolbar->addSpacing(14);
+    toolbar->addWidget(refreshButton_);
     toolbar->addWidget(openButton_);
     toolbar->addWidget(cameraCombo_);
     toolbar->addWidget(cameraButton_);
@@ -145,10 +150,15 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     connect(loadButton_, &QPushButton::clicked, this, [this] {
         emit loadModelRequested(selectedModel(), selectedBackend());
     });
+    connect(refreshButton_, &QPushButton::clicked, this, &MainWindow::refreshRequested);
     connect(openButton_, &QPushButton::clicked, this, &MainWindow::openImageRequested);
     connect(cameraButton_, &QPushButton::clicked, this, [this] {
-        if (cameraRunning_) emit stopCameraRequested();
-        else emit startCameraRequested(selectedCamera());
+        if (cameraState_ == CameraState::Running) {
+            emit stopCameraRequested();
+        } else if (cameraState_ == CameraState::Idle || cameraState_ == CameraState::Error) {
+            const QString stableId = selectedCameraId();
+            if (!stableId.isEmpty()) emit startCameraRequested(stableId);
+        }
     });
     const auto thresholdChanged = [this] {
         emit thresholdsChanged(confidence(), iou(), maxDetections());
@@ -161,6 +171,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
             thresholdChanged);
     connect(classFilter_, &ClassFilterPanel::selectionChanged, this,
             &MainWindow::classSelectionChanged);
+    setCameraDevices({});
     setModelReady(false);
 }
 
@@ -194,12 +205,30 @@ QString MainWindow::selectedBackend() const {
     return backendCombo_->currentData().toString();
 }
 
-int MainWindow::selectedCamera() const {
-    return cameraCombo_->currentData().toInt();
+void MainWindow::setCameraDevices(const std::vector<CameraDeviceInfo>& devices) {
+    const QString previousId = selectedCameraId();
+    const QSignalBlocker blocker(cameraCombo_);
+    cameraDevices_ = devices;
+    cameraCombo_->clear();
+    for (const auto& device : cameraDevices_) {
+        if (device.valid()) cameraCombo_->addItem(device.displayName, device.stableId);
+    }
+    if (cameraCombo_->count() == 0) {
+        cameraCombo_->addItem(QStringLiteral("No camera detected"), QString());
+    } else {
+        selectCameraById(previousId);
+    }
+    updateControls();
 }
 
-void MainWindow::selectCamera(int cameraIndex) {
-    const int index = cameraCombo_->findData(cameraIndex);
+QString MainWindow::selectedCameraId() const {
+    return cameraCombo_->currentData().toString();
+}
+
+void MainWindow::selectCameraById(const QString& stableId) {
+    int index = cameraCombo_->findData(stableId);
+    if (index < 0 && !stableId.isEmpty()) return;
+    if (index < 0 && !cameraDevices_.empty()) index = 0;
     if (index >= 0) cameraCombo_->setCurrentIndex(index);
 }
 
@@ -258,22 +287,28 @@ void MainWindow::setLoadedConfiguration(const QString& configuration) {
 }
 
 void MainWindow::setModelLoading(bool loading) {
-    modelCombo_->setEnabled(!loading);
-    backendCombo_->setEnabled(!loading);
-    loadButton_->setEnabled(!loading && backendCombo_->count() > 0);
+    modelLoading_ = loading;
+    updateControls();
 }
 
 void MainWindow::setModelReady(bool ready) {
-    openButton_->setEnabled(ready);
-    cameraButton_->setEnabled(ready);
+    modelReady_ = ready;
+    updateControls();
 }
 
-void MainWindow::setCameraRunning(bool running) {
-    cameraRunning_ = running;
-    cameraButton_->setText(running ? QStringLiteral("Stop camera")
-                                   : QStringLiteral("Start camera"));
-    openButton_->setEnabled(!running);
-    cameraCombo_->setEnabled(!running);
+void MainWindow::setCameraState(CameraState state) {
+    cameraState_ = state;
+    updateControls();
+}
+
+void MainWindow::setRefreshActive(bool active) {
+    refreshActive_ = active;
+    updateControls();
+}
+
+void MainWindow::setCameraRecoveryBlocked(bool blocked) {
+    cameraRecoveryBlocked_ = blocked;
+    updateControls();
 }
 
 void MainWindow::closeEvent(QCloseEvent* event) {
@@ -296,7 +331,40 @@ void MainWindow::rebuildBackends() {
     int index = backendCombo_->findData(previous);
     if (index < 0) index = backendCombo_->findData(found->defaultBackend);
     if (index >= 0) backendCombo_->setCurrentIndex(index);
-    loadButton_->setEnabled(backendCombo_->count() > 0);
+    updateControls();
+}
+
+void MainWindow::updateControls() {
+    const bool hasCamera = !selectedCameraId().isEmpty();
+    const bool cameraTransition = cameraState_ == CameraState::Opening ||
+                                  cameraState_ == CameraState::Stopping;
+    const bool cameraRunning = cameraState_ == CameraState::Running;
+    const bool cameraCanStart = (cameraState_ == CameraState::Idle ||
+                                 cameraState_ == CameraState::Error) &&
+                                !cameraRecoveryBlocked_;
+
+    modelCombo_->setEnabled(!modelLoading_ && !refreshActive_);
+    backendCombo_->setEnabled(!modelLoading_ && !refreshActive_);
+    loadButton_->setEnabled(!modelLoading_ && !refreshActive_ &&
+                            backendCombo_->count() > 0 && !cameraRecoveryBlocked_);
+    refreshButton_->setEnabled(!modelLoading_ && !refreshActive_);
+    openButton_->setEnabled(modelReady_ && !refreshActive_ &&
+                            !cameraRunning && !cameraTransition);
+    cameraCombo_->setEnabled(hasCamera && !refreshActive_ && !cameraRunning &&
+                             !cameraTransition && !cameraRecoveryBlocked_);
+
+    if (cameraState_ == CameraState::Opening) {
+        cameraButton_->setText(QStringLiteral("Opening..."));
+    } else if (cameraState_ == CameraState::Stopping) {
+        cameraButton_->setText(QStringLiteral("Stopping..."));
+    } else if (cameraState_ == CameraState::Running) {
+        cameraButton_->setText(QStringLiteral("Stop camera"));
+    } else {
+        cameraButton_->setText(QStringLiteral("Start camera"));
+    }
+    cameraButton_->setEnabled(modelReady_ && !refreshActive_ &&
+                              ((cameraRunning && !cameraRecoveryBlocked_) ||
+                               (cameraCanStart && hasCamera)));
 }
 
 }  // namespace odf::desktop

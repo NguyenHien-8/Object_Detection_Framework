@@ -24,6 +24,7 @@ struct DetectionPacket {
     detection::DetectionResult result;
     std::vector<std::string> labels;
     std::uint64_t requestGeneration{0};
+    std::uint64_t sourceGeneration{0};
     std::uint64_t droppedFrames{0};
 };
 
@@ -39,7 +40,8 @@ public:
 
     void requestLoad(QString modelId, QString backend, backend::BackendConfig config,
                      bool allowUnvalidatedModel);
-    void submitFrame(ImageFramePtr frame);
+    bool submitFrame(ImageFramePtr frame, std::uint64_t sourceGeneration);
+    void invalidateSource(std::uint64_t sourceGeneration);
     void setOptions(detection::InferenceOptions options);
     void stop();
 
@@ -58,6 +60,11 @@ private:
         bool allowUnvalidatedModel{false};
     };
 
+    struct PendingFrame {
+        ImageFramePtr frame;
+        std::uint64_t sourceGeneration{0};
+    };
+
     void run();
 
     const app::RuntimeCatalog& catalog_;
@@ -66,9 +73,10 @@ private:
     std::condition_variable condition_;
     bool stopping_{false};
     std::uint64_t desiredGeneration_{0};
+    std::uint64_t activeSourceGeneration_{0};
     std::uint64_t droppedFrames_{0};
     std::optional<LoadRequest> pendingLoad_;
-    ImageFramePtr pendingFrame_;
+    std::optional<PendingFrame> pendingFrame_;
     detection::InferenceOptions options_;
 };
 
@@ -76,4 +84,3 @@ private:
 
 Q_DECLARE_METATYPE(odf::desktop::DetectionPacketPtr)
 Q_DECLARE_METATYPE(odf::desktop::ImageFramePtr)
-

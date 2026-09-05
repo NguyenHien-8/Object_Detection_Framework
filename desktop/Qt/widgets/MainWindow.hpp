@@ -1,6 +1,7 @@
 #pragma once
 
 #include "odf/detection/detection.hpp"
+#include "services/CameraDeviceService.hpp"
 
 #include <QMainWindow>
 #include <QSet>
@@ -54,8 +55,9 @@ public:
     void selectBackend(const QString& backend);
     [[nodiscard]] QString selectedModel() const;
     [[nodiscard]] QString selectedBackend() const;
-    [[nodiscard]] int selectedCamera() const;
-    void selectCamera(int cameraIndex);
+    void setCameraDevices(const std::vector<CameraDeviceInfo>& devices);
+    [[nodiscard]] QString selectedCameraId() const;
+    void selectCameraById(const QString& stableId);
     void setThresholds(double confidence, double iou, int maxDetections);
     [[nodiscard]] double confidence() const;
     [[nodiscard]] double iou() const;
@@ -70,13 +72,16 @@ public:
     void setLoadedConfiguration(const QString& configuration);
     void setModelLoading(bool loading);
     void setModelReady(bool ready);
-    void setCameraRunning(bool running);
+    void setCameraState(CameraState state);
+    void setRefreshActive(bool active);
+    void setCameraRecoveryBlocked(bool blocked);
 
 signals:
     void configurationEdited(QString modelId, QString backend);
     void loadModelRequested(QString modelId, QString backend);
+    void refreshRequested();
     void openImageRequested();
-    void startCameraRequested(int cameraIndex);
+    void startCameraRequested(QString stableId);
     void stopCameraRequested();
     void thresholdsChanged(double confidence, double iou, int maxDetections);
     void classSelectionChanged(QSet<int> selectedClasses);
@@ -87,6 +92,7 @@ protected:
 
 private:
     void rebuildBackends();
+    void updateControls();
 
     QComboBox* modelCombo_{nullptr};
     QComboBox* frameworkCombo_{nullptr};
@@ -95,6 +101,7 @@ private:
     QComboBox* precisionCombo_{nullptr};
     QComboBox* cameraCombo_{nullptr};
     QPushButton* loadButton_{nullptr};
+    QPushButton* refreshButton_{nullptr};
     QPushButton* openButton_{nullptr};
     QPushButton* cameraButton_{nullptr};
     QDoubleSpinBox* confidenceSpin_{nullptr};
@@ -108,8 +115,13 @@ private:
     DetectionViewport* viewport_{nullptr};
     ClassFilterPanel* classFilter_{nullptr};
     std::vector<ModelChoice> models_;
+    std::vector<CameraDeviceInfo> cameraDevices_;
     QSet<QString> availableBackends_;
-    bool cameraRunning_{false};
+    CameraState cameraState_{CameraState::Idle};
+    bool modelReady_{false};
+    bool modelLoading_{false};
+    bool refreshActive_{false};
+    bool cameraRecoveryBlocked_{false};
 };
 
 }  // namespace odf::desktop

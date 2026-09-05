@@ -15,6 +15,8 @@ qt_add_executable(odf_desktop WIN32
     bridge/QtImageBridge.hpp
     controllers/AppController.cpp
     controllers/AppController.hpp
+    services/CameraDeviceService.cpp
+    services/CameraDeviceService.hpp
     services/SettingsService.cpp
     services/SettingsService.hpp
     widgets/ClassFilterPanel.cpp
@@ -30,6 +32,9 @@ qt_add_executable(odf_desktop WIN32
 )
 target_include_directories(odf_desktop PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(odf_desktop PRIVATE odf_app_support Qt6::Widgets)
+if(WIN32)
+    target_link_libraries(odf_desktop PRIVATE ole32 mf mfplat mfuuid)
+endif()
 target_compile_features(odf_desktop PRIVATE cxx_std_17)
 odf_enable_warnings(odf_desktop)
 odf_stage_runtime_dependencies(odf_desktop)

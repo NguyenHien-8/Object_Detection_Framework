@@ -1,5 +1,7 @@
 #include "workers/InferenceWorker.hpp"
 
+#include "odf/logging.hpp"
+
 #include <utility>
 
 namespace odf::desktop {
@@ -21,19 +23,39 @@ void InferenceWorker::requestLoad(QString modelId, QString backendName,
                                    backendName.toStdString(), std::move(config),
                                    allowUnvalidatedModel};
         pendingFrame_.reset();
+        droppedFrames_ = 0;
     }
     condition_.notify_one();
 }
 
-void InferenceWorker::submitFrame(ImageFramePtr frame) {
-    if (!frame) return;
+bool InferenceWorker::submitFrame(ImageFramePtr frame, std::uint64_t sourceGeneration) {
+    if (!frame) return false;
     {
         std::lock_guard<std::mutex> lock(mutex_);
-        if (stopping_) return;
+        if (stopping_ || sourceGeneration != activeSourceGeneration_) {
+            logging::log(logging::Level::Debug,
+                         "stale source frame discarded before inference: generation=" +
+                             std::to_string(sourceGeneration) + " active=" +
+                             std::to_string(activeSourceGeneration_));
+            return false;
+        }
         if (pendingFrame_) ++droppedFrames_;
-        pendingFrame_ = std::move(frame);
+        pendingFrame_ = PendingFrame{std::move(frame), sourceGeneration};
     }
     condition_.notify_one();
+    return true;
+}
+
+void InferenceWorker::invalidateSource(std::uint64_t sourceGeneration) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    activeSourceGeneration_ = sourceGeneration;
+    droppedFrames_ = 0;
+    if (pendingFrame_) {
+        logging::log(logging::Level::Debug,
+                     "pending inference frame discarded: new source generation=" +
+                         std::to_string(sourceGeneration));
+        pendingFrame_.reset();
+    }
 }
 
 void InferenceWorker::setOptions(detection::InferenceOptions options) {
@@ -60,13 +82,13 @@ void InferenceWorker::run() {
 
     while (true) {
         std::optional<LoadRequest> load;
-        ImageFramePtr frame;
+        PendingFrame pending;
         detection::InferenceOptions options;
         std::uint64_t dropped = 0;
         {
             std::unique_lock<std::mutex> lock(mutex_);
             condition_.wait(lock, [this] {
-                return stopping_ || pendingLoad_.has_value() || pendingFrame_ != nullptr;
+                return stopping_ || pendingLoad_.has_value() || pendingFrame_.has_value();
             });
             if (stopping_) break;
             if (pendingLoad_) {
@@ -74,7 +96,7 @@ void InferenceWorker::run() {
                 pendingLoad_.reset();
                 pendingFrame_.reset();
             } else {
-                frame = std::move(pendingFrame_);
+                pending = std::move(*pendingFrame_);
                 pendingFrame_.reset();
                 options = options_;
                 dropped = droppedFrames_;
@@ -113,13 +135,13 @@ void InferenceWorker::run() {
             continue;
         }
 
-        if (!frame) continue;
+        if (!pending.frame) continue;
         if (!detector) {
             emit failed(QStringLiteral("Inference"),
                         QStringLiteral("Load a model before starting inference"));
             continue;
         }
-        auto result = detector->detect(*frame, options);
+        auto result = detector->detect(*pending.frame, options);
         if (!result.ok()) {
             emit failed(QStringLiteral("Inference"),
                         QString::fromStdString(result.status().message()));
@@ -128,13 +150,21 @@ void InferenceWorker::run() {
         {
             std::lock_guard<std::mutex> lock(mutex_);
             if (loadedGeneration != desiredGeneration_) continue;
+            if (pending.sourceGeneration != activeSourceGeneration_) {
+                logging::log(logging::Level::Debug,
+                             "stale detection discarded after inference: generation=" +
+                                 std::to_string(pending.sourceGeneration) + " active=" +
+                                 std::to_string(activeSourceGeneration_));
+                continue;
+            }
         }
         auto packet = std::make_shared<DetectionPacket>();
-        packet->frame = *frame;
+        packet->frame = *pending.frame;
         packet->result = result.takeValue();
         packet->result.modelGeneration = loadedGeneration;
         packet->labels = labels;
         packet->requestGeneration = loadedGeneration;
+        packet->sourceGeneration = pending.sourceGeneration;
         packet->droppedFrames = dropped;
         emit detectionReady(std::move(packet));
     }

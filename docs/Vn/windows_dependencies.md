@@ -4,6 +4,9 @@ Dùng thống nhất x64 Release cho ứng dụng và mọi native dependency. T
 Visual Studio 2022/MSVC 19.44, CMake 4.4.2, Qt 6.11.2 MSVC2022 x64, OpenCV 4.14.0 và ONNX Runtime
 C++ 1.26.0. Phiên bản CMake tối thiểu của project vẫn là 3.24.
 
+Camera được quét bằng Windows Media Foundation từ Windows SDK (`mf`, `mfplat`, `mfuuid`) và được
+capture bằng backend OpenCV `CAP_MSMF` tương ứng. Không cần Qt Multimedia.
+
 ## Các file mốc của SDK
 
 ```text

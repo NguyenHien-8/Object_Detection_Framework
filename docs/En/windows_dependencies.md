@@ -4,6 +4,9 @@ Use x64 Release consistently for the application and every native dependency. Th
 combination is Visual Studio 2022/MSVC 19.44, CMake 4.4.2, Qt 6.11.2 MSVC2022 x64, OpenCV 4.14.0,
 and ONNX Runtime C++ 1.26.0. CMake 3.24 remains the project minimum.
 
+Camera discovery uses Windows Media Foundation from the Windows SDK (`mf`, `mfplat`, and
+`mfuuid`) and capture uses OpenCV's matching `CAP_MSMF` backend. Qt Multimedia is not required.
+
 ## Expected SDK landmarks
 
 ```text

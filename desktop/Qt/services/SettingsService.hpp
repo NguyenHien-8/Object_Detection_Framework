@@ -12,7 +12,8 @@ struct DesktopSettings {
     double confidence{0.25};
     double iou{0.45};
     int maxDetections{300};
-    int cameraIndex{0};
+    QString cameraDeviceId;
+    int legacyCameraIndex{-1};
     QString lastImageDirectory;
     QString modelRootOverride;
     QList<int> selectedClasses;

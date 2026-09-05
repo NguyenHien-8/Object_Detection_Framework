@@ -104,16 +104,27 @@ GUI thread
 InferenceWorker std::thread <- một pending frame mới nhất
        ^
        |
-CameraWorker QObject trên QThread <- OpenCV VideoCapture + QTimer
+CameraWorker QObject trên QThread <- identity Media Foundation + OpenCV CAP_MSMF
 ```
 
-Camera và inference không chạy trên GUI thread. Nếu camera nhanh hơn inference, frame mới thay
-frame đang chờ duy nhất và tăng `droppedFrames`; nhờ vậy độ trễ và bộ nhớ không tăng theo hàng đợi
-frame cũ. Yêu cầu nạp model làm tăng generation, xóa frame đang chờ và loại kết quả thuộc
-generation trước. Mỗi packet chứa đúng frame sở hữu, detection, nhãn, generation và số frame bị
-bỏ, nên box không bị vẽ lên frame khác.
+Trên Windows, camera được tìm bằng `MFEnumDeviceSources`: UI hiển thị FriendlyName, giá trị lưu bền
+vững là symbolic link, và chỉ index nội bộ tương ứng của `CAP_MSMF` được truyền cho OpenCV. Không
+tạo camera giữ chỗ bằng số.
 
-Đổi lựa chọn class chỉ lọc lại kết quả cache để hiển thị, không suy luận lại. Đổi confidence, IoU
+Vòng đời có acknowledgement là `Idle -> Opening -> Running -> Stopping -> Idle`; lỗi chuyển sang
+`Error`. Chỉ báo `Running` sau frame hợp lệ đầu tiên. Chỉ báo `Idle` sau khi dừng lịch capture và
+`VideoCapture::release()` hoàn tất. Watchdog Opening là năm giây, Stopping là ba giây và không bao
+giờ cưỡng bức dừng native code.
+
+Camera và inference không chạy trên GUI thread. Capture dùng timer single-shot 15 ms, chỉ đặt lịch
+lại sau khi `read()` hoàn tất nên event loop camera còn cơ hội xử lý lệnh vòng đời. Nếu camera nhanh
+hơn inference, frame mới thay frame chờ duy nhất và tăng `droppedFrames`. Session ID camera và
+source generation loại frame/kết quả in-flight cũ sau Stop, Restart, đổi nguồn hoặc Refresh.
+
+Refresh tăng source generation và quét lại thiết bị mà không unload model. Nếu camera đang chạy,
+controller chờ acknowledgement release, giữ symbolic-link ID và chỉ mở session mới khi đúng thiết
+bị đó vẫn còn. Trong image mode, ảnh đang giữ trong bộ nhớ được gửi lại đúng một lần. Đổi lựa chọn
+class chỉ lọc kết quả cache để hiển thị, không suy luận lại. Đổi confidence, IoU
 hoặc số detection tối đa sẽ gửi lại ảnh tĩnh hiện tại; khi chạy camera, option mới áp dụng cho
 frame kế tiếp. Khi đóng app, controller dừng capture, join camera thread, dừng và join inference,
 unload detector rồi mới hủy UI.

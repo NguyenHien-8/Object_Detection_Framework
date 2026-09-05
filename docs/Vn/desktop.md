@@ -38,12 +38,13 @@ khởi động, truyền đường dẫn tuyệt đối cho `--models` là cách
 
 1. Kiểm tra Framework, Model, Backend, CPU và FP32 rồi bấm **Load model**. Thay combobox chưa đổi
    detector đang nạp cho đến khi bấm nút này.
-2. Bấm **Open image…**, hoặc chọn chỉ số camera rồi bấm **Start camera**.
-3. Chỉnh confidence, IoU và số detection tối đa. Với graph YOLO26n end-to-end, NMS đã trong graph
+2. Bấm **Refresh** để phục hồi trạng thái nguồn và quét lại camera mà thông thường không reload model.
+3. Bấm **Open image…**, hoặc chọn tên camera thật rồi bấm **Start camera**.
+4. Chỉnh confidence, IoU và số detection tối đa. Với graph YOLO26n end-to-end, NMS đã trong graph
    vì metadata là `requires_nms=false`, nên IoU không chạy NMS lần hai ở ODF.
-4. Tìm class, chọn tất cả, xóa tất cả hoặc bật/tắt từng class. Không chọn class nào thì giao diện
+5. Tìm class, chọn tất cả, xóa tất cả hoặc bật/tắt từng class. Không chọn class nào thì giao diện
    chủ động không vẽ box nào.
-5. Theo dõi thời gian preprocess, inference, postprocess, tổng thời gian, FPS, số object và số
+6. Theo dõi thời gian preprocess, inference, postprocess, tổng thời gian, FPS, số object và số
    frame bị bỏ ở bảng metrics.
 
 Lọc class chỉ vẽ lại detection đã cache, không chạy graph lại. Viewport giữ tỷ lệ ảnh nguồn và chỉ
@@ -51,12 +52,24 @@ Lọc class chỉ vẽ lại detection đã cache, không chạy graph lại. Vi
 
 ## Trạng thái và lỗi
 
-Controller duy trì trạng thái model độc lập (`Unloaded`, `Loading`, `Ready`, `Error`, `Unloading`)
-và trạng thái nguồn ảnh/camera độc lập. Khi nạp model mới, camera được dừng trước. Thiếu artifact,
-ảnh lỗi, tensor không tương thích, camera không khả dụng và exception runtime đều hiện tại vùng
-status, không tạo detection giả.
+Controller duy trì trạng thái model và state machine camera có acknowledgement:
 
-`QSettings` lưu model/backend, chỉ số camera, threshold, class selection, thư mục ảnh gần nhất,
+```text
+Idle -> Opening -> Running -> Stopping -> Idle
+          \            \               -> Error
+```
+
+Nút Start bị khóa trong Opening; nút hiện `Stopping...` và bị khóa đến khi worker xác nhận release.
+Nếu yêu cầu Load model khi camera đang hoạt động, controller chờ acknowledgement đó rồi mới reload.
+Thiếu artifact, ảnh lỗi, tensor không tương thích, camera không khả dụng và exception runtime đều
+hiện ở vùng status, không tạo detection giả.
+
+Refresh giữ nguyên model đã nạp. Khi camera đang chạy, nó dừng/release session cũ, vô hiệu source
+generation đang chờ hoặc in-flight, quét thiết bị, khôi phục đúng stable ID và chờ frame đầu tiên
+của session mới. Khi camera dừng, nó chỉ xóa trạng thái nguồn cũ và quét thiết bị. Trong image mode,
+nó gửi lại ảnh đang giữ đúng một lần.
+
+`QSettings` lưu model/backend, symbolic link ổn định của camera, threshold, class selection, thư mục ảnh gần nhất,
 model root và hình học cửa sổ.
 
 ## Tham số dòng lệnh
@@ -80,5 +93,5 @@ không bỏ qua kiểm tra tensor, file còn thiếu hoặc khả năng backend.
 ## Đóng chương trình và lưu ý camera
 
 Khi đóng cửa sổ, app dừng capture, join camera thread, dừng và join inference rồi unload detector.
-Camera còn phụ thuộc thiết bị, driver, quyền riêng tư và chỉ số; CTest đạt không chứng minh webcam
-vật lý hoạt động.
+Camera còn phụ thuộc thiết bị, driver và quyền riêng tư; CTest đạt không chứng minh webcam vật lý
+hoạt động. Dùng executable test phần cứng trong [Build và kiểm thử](build.md) để kiểm tra restart lặp.
