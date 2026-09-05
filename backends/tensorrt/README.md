@@ -1,4 +1,3 @@
 # TensorRT backend
 
-Planned. `ODF_ENABLE_TENSORRT=ON` currently fails configuration explicitly.
-
+[English](README_En.md) | [Tiếng Việt](README_Vn.md)

@@ -1,5 +1,3 @@
-# Paddle core example
+# Paddle adapters / Các adapter Paddle
 
-This example is intentionally gated until the Paddle backend is implemented and validated.
-See `docs/backends.md`. There is no fake inference fallback.
-
+[English](README_En.md) | [Tiếng Việt](README_Vn.md)

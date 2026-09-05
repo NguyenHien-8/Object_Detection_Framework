@@ -1,5 +1,3 @@
-# Benchmarks
+# Benchmarks / Đo hiệu năng
 
-Generated benchmark JSON belongs under `benchmarks/results/`, which is ignored by Git. See
-`docs/benchmark.md` for measurement semantics.
-
+[English](README_En.md) | [Tiếng Việt](README_Vn.md)
