@@ -64,5 +64,5 @@ toán, quy tắc validation và xử lý sự cố.
 
 ## Phạm vi giấy phép
 
-Source ODF tuân theo [`LICENSE`](LICENSE) của repository. SDK runtime và artifact model giữ giấy
+Source ODF tuân theo [`LICENSE`](../LICENSE) của repository. SDK runtime và artifact model giữ giấy
 phép riêng; xem [thông báo bên thứ ba](THIRD_PARTY_NOTICES_Vn.md).
