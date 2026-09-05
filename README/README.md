@@ -1,6 +1,6 @@
 # Object Detection Framework
 
-[English](README/README_En.md) | [Tiếng Việt](README/README_Vn.md)
+[English](README_En.md) | [Tiếng Việt](README_Vn.md)
 
 Choose a language above. Detailed documentation is organized under [`docs/En`](docs/En/README.md)
 and [`docs/Vn`](docs/Vn/README.md).
